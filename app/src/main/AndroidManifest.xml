@@ -5,7 +5,9 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <application
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
         android:label="Codex Scratchpad"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.CodexScratchpad"
         android:usesCleartextTraffic="true">
         <activity android:name=".MainActivity" android:exported="true">
