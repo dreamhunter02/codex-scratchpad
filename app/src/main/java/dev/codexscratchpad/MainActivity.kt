@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.*
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.net.nsd.NsdManager
+import android.net.nsd.NsdServiceInfo
 import android.view.MotionEvent
 import android.view.View
 import androidx.activity.ComponentActivity
@@ -44,12 +46,20 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun ScratchpadApp() {
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("scratchpad", Context.MODE_PRIVATE) }
-    var endpoint by remember { mutableStateOf(prefs.getString("endpoint", "http://192.168.1.2:8787") ?: "") }
+    var endpoint by remember { mutableStateOf<String?>(null) }
     var caption by remember { mutableStateOf("") }
-    var status by remember { mutableStateOf("Set your Mac address to connect") }
+    var status by remember { mutableStateOf("Looking for Codex Scratchpad on this Wi-Fi…") }
     var canvas by remember { mutableStateOf<ScratchpadView?>(null) }
     var erasing by remember { mutableStateOf(false) }
+    val discovery = remember { LocalBridgeDiscovery(context.applicationContext) }
+
+    DisposableEffect(discovery) {
+        discovery.start { discovered ->
+            endpoint = discovered
+            status = "Connected to Codex on local Wi-Fi"
+        }
+        onDispose { discovery.stop() }
+    }
 
     MaterialTheme(colorScheme = darkColorScheme(primary = Amber, background = Graphite, surface = Surface)) {
         Surface(modifier = Modifier.fillMaxSize(), color = Graphite) {
@@ -66,16 +76,7 @@ private fun ScratchpadApp() {
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = endpoint,
-                    onValueChange = { endpoint = it; prefs.edit().putString("endpoint", it).apply() },
-                    label = { Text("Mac bridge URL") },
-                    supportingText = { Text("Example: http://192.168.1.42:8787") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber, focusedLabelColor = Amber)
-                )
-                Spacer(Modifier.height(12.dp))
+                Text(status, color = if (endpoint == null) Muted else Color(0xFF9BD96C), fontSize = 13.sp, modifier = Modifier.padding(vertical = 10.dp))
                 AndroidView(
                     factory = { ScratchpadView(it).also { view -> canvas = view } },
                     update = { it.erasing = erasing },
@@ -100,10 +101,12 @@ private fun ScratchpadApp() {
                 Button(
                     onClick = {
                         val png = canvas?.png()
+                        val bridge = endpoint
                         if (png == null || png.isEmpty()) { status = "Draw something first"; return@Button }
+                        if (bridge == null) { status = "Still looking for Codex Scratchpad on this Wi-Fi…"; return@Button }
                         status = "Pushing to Codex…"
                         thread {
-                            val result = pushScribble(endpoint, png, caption)
+                            val result = pushScribble(bridge, png, caption)
                             (context as? ComponentActivity)?.runOnUiThread { status = result }
                         }
                     },
@@ -111,7 +114,7 @@ private fun ScratchpadApp() {
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Amber, contentColor = Color.Black)
                 ) { Text("⇧  Push to Codex", fontSize = 18.sp) }
-                Text(status, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 7.dp))
+                Text(if (endpoint == null) "Keep this phone and Mac on the same Wi-Fi." else status, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 7.dp))
             }
         }
     }
@@ -128,6 +131,38 @@ private fun pushScribble(endpoint: String, png: ByteArray, caption: String): Str
 } catch (error: Exception) { "Could not reach bridge: ${error.message}" }
 
 private fun json(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\""
+
+private class LocalBridgeDiscovery(context: Context) {
+    private val nsd = context.getSystemService(NsdManager::class.java)
+    private var listener: NsdManager.DiscoveryListener? = null
+
+    fun start(onResolved: (String) -> Unit) {
+        if (listener != null) return
+        listener = object : NsdManager.DiscoveryListener {
+            override fun onDiscoveryStarted(serviceType: String) = Unit
+            override fun onDiscoveryStopped(serviceType: String) = Unit
+            override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) = Unit
+            override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) = Unit
+            override fun onServiceLost(serviceInfo: NsdServiceInfo) = Unit
+            override fun onServiceFound(serviceInfo: NsdServiceInfo) {
+                if (serviceInfo.serviceType != "_codex-scratchpad._tcp.") return
+                nsd.resolveService(serviceInfo, object : NsdManager.ResolveListener {
+                    override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) = Unit
+                    override fun onServiceResolved(resolved: NsdServiceInfo) {
+                        val host = resolved.host?.hostAddress ?: return
+                        onResolved("http://$host:${resolved.port}")
+                    }
+                })
+            }
+        }
+        nsd.discoverServices("_codex-scratchpad._tcp.", NsdManager.PROTOCOL_DNS_SD, listener)
+    }
+
+    fun stop() {
+        listener?.let { runCatching { nsd.stopServiceDiscovery(it) } }
+        listener = null
+    }
+}
 
 private class ScratchpadView(context: Context) : View(context) {
     private data class Stroke(val path: Path, val eraser: Boolean, val width: Float)

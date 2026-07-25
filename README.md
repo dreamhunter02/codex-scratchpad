@@ -50,15 +50,13 @@ Codex receives the sketch through these private local MCP tools:
 
 Ask Codex: **“Read my newest scratchpad image.”**
 
-> **Implementation note:** the current source includes the Android canvas and local MCP inbox. Bonjour discovery + automatic pairing is the next slice; the temporary bridge-URL field is not the intended product experience and will be removed with that change.
-
 ## Security model
 
 Scratchpad traffic stays on the local network and is intended for a trusted private Wi-Fi. Bonjour advertises the local receiver; a short-lived pairing secret authorizes the phone. No image is sent to a cloud service. Do not expose the receiver to the public internet.
 
 ## Roadmap
 
-- [ ] Bonjour/mDNS automatic Mac discovery
+- [x] Bonjour/mDNS automatic Mac discovery
 - [ ] QR fallback + short-lived device pairing
 - [ ] iOS / iPad client
 - [ ] Screenshot and camera annotation
