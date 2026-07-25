@@ -189,17 +189,19 @@ def main() -> None:
     parser.add_argument("--inbox", default=os.environ.get("CODEX_SCRATCHPAD_INBOX", "~/.codex-scratchpad/inbox"))
     parser.add_argument("--token", default=os.environ.get("CODEX_SCRATCHPAD_TOKEN"))
     parser.add_argument("--http-only", action="store_true", help="Run the LAN bridge without the stdio MCP transport.")
+    parser.add_argument("--no-http", action="store_true", help="Run only the stdio MCP transport against an existing local inbox.")
     args = parser.parse_args()
     inbox = Inbox(Path(args.inbox))
-    server = start_http(inbox, args.host, args.port, args.token)
-    advertisement = start_bonjour_advertisement(args.port)
+    server = None if args.no_http else start_http(inbox, args.host, args.port, args.token)
+    advertisement = None if args.no_http else start_bonjour_advertisement(args.port)
     try:
         if args.http_only:
             threading.Event().wait()
         else:
             run_mcp(inbox)
     finally:
-        server.shutdown()
+        if server:
+            server.shutdown()
         if advertisement:
             advertisement.terminate()
 

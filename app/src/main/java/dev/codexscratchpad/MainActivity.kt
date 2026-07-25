@@ -29,6 +29,9 @@ import java.net.URL
 import java.util.Base64
 import java.util.UUID
 import kotlin.concurrent.thread
+import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.min
 
 private val Graphite = Color(0xFF111111)
 private val Surface = Color(0xFF1B1B1B)
@@ -48,7 +51,7 @@ private fun ScratchpadApp() {
     val context = LocalContext.current
     var endpoint by remember { mutableStateOf<String?>(null) }
     var caption by remember { mutableStateOf("") }
-    var status by remember { mutableStateOf("Looking for Codex Scratchpad on this Wi-Fi…") }
+    var pushStatus by remember { mutableStateOf<String?>(null) }
     var canvas by remember { mutableStateOf<ScratchpadView?>(null) }
     var erasing by remember { mutableStateOf(false) }
     val discovery = remember { LocalBridgeDiscovery(context.applicationContext) }
@@ -56,32 +59,46 @@ private fun ScratchpadApp() {
     DisposableEffect(discovery) {
         discovery.start { discovered ->
             endpoint = discovered
-            status = "Connected to Codex on local Wi-Fi"
         }
         onDispose { discovery.stop() }
     }
 
     MaterialTheme(colorScheme = darkColorScheme(primary = Amber, background = Graphite, surface = Surface)) {
         Surface(modifier = Modifier.fillMaxSize(), color = Graphite) {
-            Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Text("</>", color = Amber, fontSize = 24.sp)
+            Column(
+                modifier = Modifier.fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp)
+                ) {
+                    Text("</>", color = Amber, fontSize = 22.sp)
                     Spacer(Modifier.width(10.dp))
-                    Text("Codex ", color = Color.White, fontSize = 25.sp)
-                    Text("Scratchpad", color = Amber, fontSize = 25.sp)
+                    Text("Codex Scratchpad", color = Color.White, fontSize = 21.sp)
                     Spacer(Modifier.weight(1f))
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("● Connected", color = Color(0xFF9BD96C), fontSize = 13.sp)
-                        Text("Local Wi-Fi", color = Muted, fontSize = 11.sp)
-                    }
+                    Text(
+                        if (endpoint == null) "○ Looking…" else "● Connected",
+                        color = if (endpoint == null) Muted else Color(0xFF6FDB91),
+                        fontSize = 12.sp
+                    )
                 }
-                Spacer(Modifier.height(16.dp))
-                Text(status, color = if (endpoint == null) Muted else Color(0xFF9BD96C), fontSize = 13.sp, modifier = Modifier.padding(vertical = 10.dp))
-                AndroidView(
-                    factory = { ScratchpadView(it).also { view -> canvas = view } },
-                    update = { it.erasing = erasing },
-                    modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(22.dp))
-                )
+                Spacer(Modifier.height(10.dp))
+                Box(modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(22.dp))) {
+                    AndroidView(
+                        factory = { ScratchpadView(it).also { view -> canvas = view } },
+                        update = { it.erasing = erasing },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Text(
+                        "Pinch to zoom · two fingers to pan",
+                        color = Color(0xFF8A8A8A),
+                        fontSize = 11.sp,
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     TextButton(onClick = { erasing = false }) { Text("Pen", color = if (!erasing) Amber else Muted) }
@@ -102,19 +119,24 @@ private fun ScratchpadApp() {
                     onClick = {
                         val png = canvas?.png()
                         val bridge = endpoint
-                        if (png == null || png.isEmpty()) { status = "Draw something first"; return@Button }
-                        if (bridge == null) { status = "Still looking for Codex Scratchpad on this Wi-Fi…"; return@Button }
-                        status = "Pushing to Codex…"
+                        if (png == null || png.isEmpty()) { pushStatus = "Draw something first"; return@Button }
+                        if (bridge == null) { pushStatus = "Still looking for Codex Scratchpad on this Wi-Fi…"; return@Button }
+                        pushStatus = "Pushing to Codex…"
                         thread {
                             val result = pushScribble(bridge, png, caption)
-                            (context as? ComponentActivity)?.runOnUiThread { status = result }
+                            (context as? ComponentActivity)?.runOnUiThread { pushStatus = result }
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Amber, contentColor = Color.Black)
                 ) { Text("⇧  Push to Codex", fontSize = 18.sp) }
-                Text(if (endpoint == null) "Keep this phone and Mac on the same Wi-Fi." else status, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 7.dp))
+                Text(
+                    pushStatus ?: "Ready — keep this phone and Mac on the same Wi-Fi.",
+                    color = if (pushStatus?.startsWith("Pushed") == true) Color(0xFF9BD96C) else Muted,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 7.dp)
+                )
             }
         }
     }
@@ -127,7 +149,7 @@ private fun pushScribble(endpoint: String, png: ByteArray, caption: String): Str
         setRequestProperty("Content-Type", "application/json")
     }
     connection.outputStream.use { it.write(body.toByteArray()) }
-    if (connection.responseCode in 200..299) "Pushed — type /scratchpad in Codex" else "Bridge error ${connection.responseCode}"
+    if (connection.responseCode in 200..299) "Pushed — ask Codex to read your newest scratchpad." else "Bridge error ${connection.responseCode}"
 } catch (error: Exception) { "Could not reach bridge: ${error.message}" }
 
 private fun json(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\""
@@ -169,22 +191,117 @@ private class ScratchpadView(context: Context) : View(context) {
     private val strokes = mutableListOf<Stroke>()
     private var current: Stroke? = null
     var erasing = false
+    private var scale = 1f
+    private var panX = 0f
+    private var panY = 0f
+    private var transforming = false
+    private var lastFocusX = 0f
+    private var lastFocusY = 0f
+    private var lastSpan = 0f
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.rgb(35, 35, 35); strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND; style = Paint.Style.STROKE }
 
     init { background = ColorDrawable(android.graphics.Color.rgb(247, 242, 233)) }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val isStylus = event.getToolType(0) == MotionEvent.TOOL_TYPE_STYLUS
         val width = if (isStylus) 3.5f + event.pressure * 6f else 6f
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> current = Stroke(Path().apply { moveTo(event.x, event.y) }, erasing, width).also(strokes::add)
-            MotionEvent.ACTION_MOVE -> current?.path?.lineTo(event.x, event.y)
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> current = null
+            MotionEvent.ACTION_DOWN -> {
+                transforming = false
+                val point = toWorld(event.x, event.y)
+                current = Stroke(Path().apply { moveTo(point.first, point.second) }, erasing, width).also(strokes::add)
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                current = null
+                beginTransform(event)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (event.pointerCount >= 2) updateTransform(event)
+                else if (!transforming) {
+                    val point = toWorld(event.x, event.y)
+                    current?.path?.lineTo(point.first, point.second)
+                }
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (event.pointerCount <= 2) transforming = false
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                current = null
+                transforming = false
+            }
         }
         invalidate(); return true
     }
-    override fun onDraw(canvas: Canvas) { super.onDraw(canvas); strokes.forEach { drawStroke(canvas, it) } }
-    private fun drawStroke(canvas: Canvas, stroke: Stroke) { paint.strokeWidth = if (stroke.eraser) 30f else stroke.width; paint.color = if (stroke.eraser) android.graphics.Color.rgb(247,242,233) else android.graphics.Color.rgb(35,35,35); canvas.drawPath(stroke.path, paint) }
+
+    private fun beginTransform(event: MotionEvent) {
+        transforming = true
+        lastFocusX = (event.getX(0) + event.getX(1)) / 2f
+        lastFocusY = (event.getY(0) + event.getY(1)) / 2f
+        lastSpan = hypot(event.getX(1) - event.getX(0), event.getY(1) - event.getY(0))
+    }
+
+    private fun updateTransform(event: MotionEvent) {
+        val focusX = (event.getX(0) + event.getX(1)) / 2f
+        val focusY = (event.getY(0) + event.getY(1)) / 2f
+        val span = hypot(event.getX(1) - event.getX(0), event.getY(1) - event.getY(0))
+        if (!transforming || lastSpan == 0f) { beginTransform(event); return }
+        val worldX = (lastFocusX - panX) / scale
+        val worldY = (lastFocusY - panY) / scale
+        scale = min(4f, max(.5f, scale * (span / lastSpan)))
+        panX = focusX - worldX * scale
+        panY = focusY - worldY * scale
+        lastFocusX = focusX
+        lastFocusY = focusY
+        lastSpan = span
+    }
+
+    private fun toWorld(x: Float, y: Float): Pair<Float, Float> = Pair((x - panX) / scale, (y - panY) / scale)
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        drawGrid(canvas)
+        canvas.save()
+        canvas.translate(panX, panY)
+        canvas.scale(scale, scale)
+        strokes.forEach { drawStroke(canvas, it) }
+        canvas.restore()
+    }
+
+    private fun drawGrid(canvas: Canvas) {
+        val spacing = 28f * scale
+        val offsetX = ((panX % spacing) + spacing) % spacing
+        val offsetY = ((panY % spacing) + spacing) % spacing
+        paint.style = Paint.Style.FILL
+        paint.color = android.graphics.Color.rgb(211, 218, 224)
+        val radius = min(1.45f, max(.8f, scale))
+        var x = offsetX
+        while (x < width) {
+            var y = offsetY
+            while (y < height) { canvas.drawCircle(x, y, radius, paint); y += spacing }
+            x += spacing
+        }
+        paint.style = Paint.Style.STROKE
+    }
+
+    private fun drawStroke(canvas: Canvas, stroke: Stroke) {
+        paint.strokeWidth = if (stroke.eraser) 30f else stroke.width
+        paint.color = if (stroke.eraser) android.graphics.Color.rgb(247,242,233) else android.graphics.Color.rgb(35,35,35)
+        canvas.drawPath(stroke.path, paint)
+    }
     fun clear() { strokes.clear(); invalidate() }
     fun undo() { if (strokes.isNotEmpty()) strokes.removeAt(strokes.lastIndex); invalidate() }
-    fun png(): ByteArray { if (width == 0 || height == 0) return byteArrayOf(); val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888); bitmap.eraseColor(android.graphics.Color.rgb(247,242,233)); Canvas(bitmap).also { output -> strokes.forEach { drawStroke(output, it) } }; return ByteArrayOutputStream().use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, out); out.toByteArray() } }
+    fun png(): ByteArray {
+        if (width == 0 || height == 0) return byteArrayOf()
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        bitmap.eraseColor(android.graphics.Color.rgb(247, 242, 233))
+        Canvas(bitmap).also { output ->
+            drawGrid(output)
+            output.save()
+            output.translate(panX, panY)
+            output.scale(scale, scale)
+            strokes.forEach { drawStroke(output, it) }
+            output.restore()
+        }
+        return ByteArrayOutputStream().use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, out); out.toByteArray() }
+    }
 }

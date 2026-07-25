@@ -2,7 +2,8 @@
   "mcpServers": {
     "codex-scratchpad": {
       "command": "python3",
-      "args": ["${CODEX_SCRATCHPAD_ROOT}/bridge/mcp_server.py"]
+      "args": ["server/mcp_reader.py"],
+      "cwd": "."
     }
   }
 }

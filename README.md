@@ -17,7 +17,8 @@ phone / tablet ── Bonjour discovery ──> Codex Scratchpad on Mac ──MC
      draw + caption                        private PNG inbox          agent context
 ```
 
-- Native Android canvas with finger + stylus pressure support
+- Infinite dotted-grid canvas with finger + stylus pressure support
+- Pinch to zoom; pan with two fingers while keeping one-finger drawing natural
 - Mobile and tablet responsive layout
 - Zero-config local discovery: no Mac IP address or port to type
 - Dependency-free Python bridge + MCP server
@@ -36,7 +37,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 2. Install the Codex plugin.
 3. Keep phone + Mac on the same Wi-Fi.
 4. Open the app. It finds the Codex Scratchpad service automatically, then pairs once.
-5. Draw, optionally add an instruction, and tap **Push to Codex**.
+5. Draw, optionally add an instruction, and tap **Push to Codex**. Pinch to zoom and use two fingers to pan across the dotted canvas.
 
 There is no IP address, port, terminal command, Firebase project, or cloud account in the user flow.
 
