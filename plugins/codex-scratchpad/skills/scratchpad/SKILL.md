@@ -3,7 +3,7 @@ name: scratchpad
 description: Retrieve the newest image pushed from the local Codex Scratchpad mobile app.
 ---
 
-# Codex Scratchpad
+# dev.board
 
 When the user asks to read, use, or inspect a mobile scratchpad:
 

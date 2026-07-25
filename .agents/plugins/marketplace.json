@@ -1,7 +1,7 @@
 {
   "name": "codex-scratchpad",
   "interface": {
-    "displayName": "Codex Scratchpad"
+    "displayName": "dev.board"
   },
   "plugins": [
     {

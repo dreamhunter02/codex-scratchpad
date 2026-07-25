@@ -1,7 +1,7 @@
 {
   "name": "codex-scratchpad",
   "version": "0.1.0+codex.20260725140805",
-  "description": "Pull visual input from Codex Scratchpad on your local Wi-Fi.",
+  "description": "Pull visual input from dev.board over your local Wi-Fi.",
   "author": {
     "name": "Vineeth Kalluru",
     "email": "kssaivineeth@gmail.com",
@@ -11,6 +11,7 @@
   "license": "MIT",
   "keywords": [
     "codex",
+    "dev-board",
     "scratchpad",
     "mobile",
     "mcp",
@@ -19,9 +20,9 @@
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
-    "displayName": "Codex Scratchpad",
-    "shortDescription": "Receive sketches from your phone.",
-    "longDescription": "A private local Wi-Fi image inbox for mobile sketches and Codex.",
+    "displayName": "dev.board",
+    "shortDescription": "Draw on your phone. Send it to Codex.",
+    "longDescription": "A private local Wi-Fi visual input surface for mobile sketches, annotations, and Codex.",
     "developerName": "Vineeth Kalluru",
     "category": "Productivity",
     "capabilities": [

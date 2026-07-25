@@ -1,0 +1,51 @@
+name: Bug report
+description: Report reproducible behavior in the Android app, bridge, or Codex plugin
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve dev.board. Remove secrets and private images before submitting.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Android app
+        - Mac bridge
+        - Codex plugin
+        - GitHub release
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: v0.2.5
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Phone model, Android version, Mac version, and network type
+

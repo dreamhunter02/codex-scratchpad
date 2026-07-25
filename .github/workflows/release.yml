@@ -26,11 +26,16 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and lint
+        run: ./gradlew :app:assembleDebug :app:lintDebug
 
       - name: Rename release asset
         run: |
+          cp app/build/outputs/apk/debug/app-debug.apk dev-board-${{ github.ref_name }}.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dev-board-latest.apk
           cp app/build/outputs/apk/debug/app-debug.apk codex-scratchpad-${{ github.ref_name }}.apk
           cp app/build/outputs/apk/debug/app-debug.apk codex-scratchpad-latest.apk
 
@@ -39,5 +44,7 @@ jobs:
         with:
           generate_release_notes: true
           files: |
+            dev-board-${{ github.ref_name }}.apk
+            dev-board-latest.apk
             codex-scratchpad-${{ github.ref_name }}.apk
             codex-scratchpad-latest.apk
