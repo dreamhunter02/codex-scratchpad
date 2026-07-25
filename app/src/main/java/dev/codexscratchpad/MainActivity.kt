@@ -17,6 +17,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -24,7 +27,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +47,7 @@ import kotlin.concurrent.thread
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlinx.coroutines.delay
 
 private val Graphite = Color(0xFF111111)
 private val Surface = Color(0xFF1B1B1B)
@@ -65,6 +73,8 @@ private fun ScratchpadApp() {
     var pushStatus by remember { mutableStateOf<String?>(null) }
     var canvas by remember { mutableStateOf<ScratchpadView?>(null) }
     var tool by remember { mutableStateOf(Tool.PEN) }
+    var showTools by remember { mutableStateOf(false) }
+    var showInstruction by remember { mutableStateOf(false) }
     val discovery = remember { LocalBridgeDiscovery(context.applicationContext) }
     val scanner = remember { GmsBarcodeScanning.getClient(context) }
 
@@ -86,86 +96,258 @@ private fun ScratchpadApp() {
         onDispose { discovery.stop() }
     }
 
+    LaunchedEffect(pushStatus) {
+        if (pushStatus != null && pushStatus != "Sending…") {
+            delay(3_000)
+            pushStatus = null
+        }
+    }
+
+    fun pairFromQr() {
+        scanner.startScan().addOnSuccessListener { barcode ->
+            val pair = Pairing.parse(barcode.rawValue)
+            if (pair == null) pushStatus = "That QR code is not a Scratchpad pairing code"
+            else {
+                endpoint = pair.endpoint
+                token = pair.token
+                pairingStore.save(pair)
+                pushStatus = "Paired with Codex Scratchpad"
+            }
+        }.addOnFailureListener { pushStatus = "QR scan cancelled or unavailable" }
+    }
+
+    fun sendToCodex() {
+        val png = canvas?.png()
+        val bridge = endpoint
+        if (png == null || png.isEmpty()) {
+            pushStatus = "Draw or annotate something first"
+            return
+        }
+        if (bridge == null) {
+            pushStatus = "Use Pair QR if auto-discovery cannot find your Mac"
+            return
+        }
+        pushStatus = "Sending…"
+        thread {
+            val result = pushScribble(bridge, token, png, caption)
+            (context as? ComponentActivity)?.runOnUiThread { pushStatus = result }
+        }
+    }
+
     MaterialTheme(colorScheme = darkColorScheme(primary = Amber, background = Graphite, surface = Surface)) {
         Surface(modifier = Modifier.fillMaxSize(), color = Graphite) {
             Column(
                 modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 10.dp)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp)) {
-                    Text("</>", color = Amber, fontSize = 22.sp)
-                    Spacer(Modifier.width(10.dp))
-                    Text("Codex Scratchpad", color = Color.White, fontSize = 21.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(46.dp)) {
+                    Text("</>", color = Amber, fontSize = 20.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Scratchpad", color = Color.White, fontSize = 19.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Box(Modifier.size(7.dp).background(if (endpoint == null) Muted else Color(0xFF56D47B), RoundedCornerShape(50)))
                     Spacer(Modifier.weight(1f))
-                    Text(if (endpoint == null) "○ Looking…" else "● Connected",
-                        color = if (endpoint == null) Muted else Color(0xFF6FDB91), fontSize = 12.sp)
+                    IconButton(onClick = ::sendToCodex, modifier = Modifier.size(42.dp)) {
+                        AppIcon(AppIconType.SEND, Amber)
+                    }
+                    IconButton(onClick = { showTools = !showTools }, modifier = Modifier.size(42.dp)) {
+                        AppIcon(AppIconType.MENU, Color.White)
+                    }
                 }
-                Spacer(Modifier.height(10.dp))
-                Box(modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(22.dp))) {
+                Spacer(Modifier.height(4.dp))
+                Box(modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(20.dp))) {
                     AndroidView(
                         factory = { ScratchpadView(it).also { view -> canvas = view } },
                         update = { it.tool = tool },
                         modifier = Modifier.fillMaxSize()
                     )
-                    Text("Pinch to zoom · two fingers to pan · S Pen pressure enabled",
-                        color = Color(0xFF767676), fontSize = 10.sp,
-                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp))
-                }
-                ToolRow(
-                    labels = listOf("Pen" to Tool.PEN, "Eraser" to Tool.ERASER, "Rect" to Tool.RECTANGLE, "Arrow" to Tool.ARROW, "Line" to Tool.LINE),
-                    selected = tool, onSelect = { tool = it }
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    TextButton(onClick = { cameraLauncher.launch(null) }) { Text("Camera", color = Muted, fontSize = 12.sp) }
-                    TextButton(onClick = { galleryLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) { Text("Gallery", color = Muted, fontSize = 12.sp) }
-                    TextButton(onClick = {
-                        scanner.startScan().addOnSuccessListener { barcode ->
-                            val pair = Pairing.parse(barcode.rawValue)
-                            if (pair == null) pushStatus = "That QR code is not a Scratchpad pairing code"
-                            else {
-                                endpoint = pair.endpoint; token = pair.token; pairingStore.save(pair)
-                                pushStatus = "Paired with Codex Scratchpad"
-                            }
-                        }.addOnFailureListener { pushStatus = "QR scan cancelled or unavailable" }
-                    }) { Text("Pair QR", color = Amber, fontSize = 12.sp) }
-                    TextButton(onClick = { canvas?.undo() }) { Text("Undo", color = Muted, fontSize = 12.sp) }
-                    TextButton(onClick = { canvas?.clear() }) { Text("Clear", color = Muted, fontSize = 12.sp) }
-                }
-                OutlinedTextField(
-                    value = caption, onValueChange = { caption = it },
-                    label = { Text("What should Codex do with this?") },
-                    placeholder = { Text("e.g. Turn this into a Mermaid diagram") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber, focusedLabelColor = Amber)
-                )
-                Spacer(Modifier.height(8.dp))
-                Button(onClick = {
-                    val png = canvas?.png(); val bridge = endpoint
-                    if (png == null || png.isEmpty()) { pushStatus = "Draw or annotate something first"; return@Button }
-                    if (bridge == null) { pushStatus = "Use Pair QR if auto-discovery cannot find your Mac"; return@Button }
-                    pushStatus = "Pushing to Codex…"
-                    thread {
-                        val result = pushScribble(bridge, token, png, caption)
-                        (context as? ComponentActivity)?.runOnUiThread { pushStatus = result }
+
+                    FloatingToolRail(
+                        tool = tool,
+                        onTool = { tool = it; showTools = false },
+                        onUndo = { canvas?.undo() },
+                        onMore = { showTools = !showTools },
+                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 10.dp)
+                    )
+
+                    if (showTools) {
+                        Box(
+                            modifier = Modifier.fillMaxSize().clickable { showTools = false }
+                        )
+                        SecondaryTools(
+                            onTool = { tool = it; showTools = false },
+                            onCamera = { showTools = false; cameraLauncher.launch(null) },
+                            onGallery = {
+                                showTools = false
+                                galleryLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },
+                            onPair = { showTools = false; pairFromQr() },
+                            onClear = { showTools = false; canvas?.clear() },
+                            onInstruction = { showTools = false; showInstruction = true },
+                            modifier = Modifier.align(Alignment.BottomStart).padding(start = 66.dp, bottom = 10.dp)
+                        )
                     }
-                }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Amber, contentColor = Color.Black)) {
-                    Text("⇧  Push to Codex", fontSize = 18.sp)
+
+                    pushStatus?.let { message ->
+                        Surface(
+                            color = Color(0xE61B1B1B),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.align(Alignment.TopCenter).padding(top = 10.dp)
+                        ) {
+                            Text(
+                                message,
+                                color = if (message.startsWith("Pushed")) Color(0xFF9BD96C) else Color.White,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
                 }
-                Text(pushStatus ?: "Use Camera or Gallery to annotate an image; Pair QR is a Wi-Fi fallback.",
-                    color = if (pushStatus?.startsWith("Pushed") == true) Color(0xFF9BD96C) else Muted,
-                    fontSize = 12.sp, modifier = Modifier.padding(top = 7.dp))
             }
+        }
+    }
+
+    if (showInstruction) {
+        AlertDialog(
+            onDismissRequest = { showInstruction = false },
+            title = { Text("Instruction for Codex") },
+            text = {
+                OutlinedTextField(
+                    value = caption,
+                    onValueChange = { caption = it },
+                    placeholder = { Text("e.g. Turn this into a Mermaid diagram") },
+                    minLines = 2,
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Amber)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showInstruction = false }) { Text("Done", color = Amber) }
+            },
+            dismissButton = {
+                TextButton(onClick = { caption = ""; showInstruction = false }) { Text("Clear") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun FloatingToolRail(
+    tool: Tool,
+    onTool: (Tool) -> Unit,
+    onUndo: () -> Unit,
+    onMore: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = Color(0xCC242424),
+        shape = RoundedCornerShape(24.dp),
+        shadowElevation = 8.dp,
+        modifier = modifier.width(46.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(vertical = 4.dp)) {
+            CompactIconButton(tool == Tool.PEN, { onTool(Tool.PEN) }) { AppIcon(AppIconType.PEN, if (tool == Tool.PEN) Amber else Color.White) }
+            CompactIconButton(tool == Tool.ERASER, { onTool(Tool.ERASER) }) { AppIcon(AppIconType.ERASER, if (tool == Tool.ERASER) Amber else Color.White) }
+            CompactIconButton(false, onUndo) { AppIcon(AppIconType.UNDO, Color.White) }
+            CompactIconButton(false, onMore) { AppIcon(AppIconType.MORE, Color.White) }
         }
     }
 }
 
 @Composable
-private fun ToolRow(labels: List<Pair<String, Tool>>, selected: Tool, onSelect: (Tool) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-        labels.forEach { (label, item) -> TextButton(onClick = { onSelect(item) }) {
-            Text(label, color = if (item == selected) Amber else Muted, fontSize = 12.sp)
-        } }
+private fun CompactIconButton(selected: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(42.dp)
+            .background(if (selected) Color(0x22FF8A1E) else Color.Transparent, RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+    ) { content() }
+}
+
+@Composable
+private fun SecondaryTools(
+    onTool: (Tool) -> Unit,
+    onCamera: () -> Unit,
+    onGallery: () -> Unit,
+    onPair: () -> Unit,
+    onClear: () -> Unit,
+    onInstruction: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = Color(0xF21B1B1B),
+        shape = RoundedCornerShape(16.dp),
+        shadowElevation = 12.dp,
+        modifier = modifier.width(188.dp)
+    ) {
+        Column(modifier = Modifier.padding(vertical = 6.dp)) {
+            ToolMenuRow("Rectangle", { onTool(Tool.RECTANGLE) })
+            ToolMenuRow("Arrow", { onTool(Tool.ARROW) })
+            ToolMenuRow("Line", { onTool(Tool.LINE) })
+            HorizontalDivider(color = Color(0xFF3A3A3A))
+            ToolMenuRow("Camera", onCamera)
+            ToolMenuRow("Gallery", onGallery)
+            ToolMenuRow("Pair QR", onPair)
+            ToolMenuRow("Clear", onClear)
+            HorizontalDivider(color = Color(0xFF3A3A3A))
+            ToolMenuRow("Add instruction", onInstruction, Amber)
+        }
+    }
+}
+
+@Composable
+private fun ToolMenuRow(label: String, onClick: () -> Unit, color: Color = Color.White) {
+    Text(
+        label,
+        color = color,
+        fontSize = 13.sp,
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp)
+    )
+}
+
+private enum class AppIconType { SEND, MENU, PEN, ERASER, UNDO, MORE }
+
+@Composable
+private fun AppIcon(type: AppIconType, color: Color) {
+    Canvas(Modifier.size(23.dp)) {
+        val stroke = Stroke(width = 2.1.dp.toPx(), cap = StrokeCap.Round)
+        when (type) {
+            AppIconType.SEND -> {
+                val path = Path().apply {
+                    moveTo(size.width * .12f, size.height * .48f)
+                    lineTo(size.width * .88f, size.height * .12f)
+                    lineTo(size.width * .62f, size.height * .88f)
+                    lineTo(size.width * .45f, size.height * .58f)
+                    close()
+                }
+                drawPath(path, color, style = stroke)
+                drawLine(color, Offset(size.width * .45f, size.height * .58f), Offset(size.width * .88f, size.height * .12f), stroke.width, StrokeCap.Round)
+            }
+            AppIconType.MENU -> listOf(.28f, .5f, .72f).forEach { y -> drawCircle(color, radius = 1.8.dp.toPx(), center = Offset(size.width / 2, size.height * y)) }
+            AppIconType.PEN -> {
+                drawLine(color, Offset(size.width * .2f, size.height * .8f), Offset(size.width * .76f, size.height * .24f), stroke.width, StrokeCap.Round)
+                drawLine(color, Offset(size.width * .15f, size.height * .85f), Offset(size.width * .3f, size.height * .81f), stroke.width, StrokeCap.Round)
+            }
+            AppIconType.ERASER -> {
+                val path = Path().apply {
+                    moveTo(size.width * .2f, size.height * .62f)
+                    lineTo(size.width * .56f, size.height * .22f)
+                    lineTo(size.width * .82f, size.height * .48f)
+                    lineTo(size.width * .46f, size.height * .82f)
+                    close()
+                }
+                drawPath(path, color, style = stroke)
+            }
+            AppIconType.UNDO -> {
+                drawArc(color, 120f, 240f, false, topLeft = Offset(size.width * .2f, size.height * .22f), size = androidx.compose.ui.geometry.Size(size.width * .62f, size.height * .62f), style = stroke)
+                drawLine(color, Offset(size.width * .2f, size.height * .44f), Offset(size.width * .2f, size.height * .18f), stroke.width, StrokeCap.Round)
+                drawLine(color, Offset(size.width * .2f, size.height * .18f), Offset(size.width * .43f, size.height * .28f), stroke.width, StrokeCap.Round)
+            }
+            AppIconType.MORE -> {
+                drawLine(color, Offset(size.width * .28f, size.height * .42f), Offset(size.width * .5f, size.height * .64f), stroke.width, StrokeCap.Round)
+                drawLine(color, Offset(size.width * .5f, size.height * .64f), Offset(size.width * .72f, size.height * .42f), stroke.width, StrokeCap.Round)
+            }
+        }
     }
 }
 

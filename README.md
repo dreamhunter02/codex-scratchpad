@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/License-MIT-181717.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/dreamhunter02/codex-scratchpad?style=social)](https://github.com/dreamhunter02/codex-scratchpad/stargazers)
 
-**Your phone is a visual input surface for Codex.** Draw with a finger, S Pen, Apple Pencil, or any stylus; tap **Push to Codex**; your local Codex agent receives the image.
+**Your phone is a visual input surface for Codex.** Draw with a finger, S Pen, Apple Pencil, or any stylus; tap the **Send** icon; your local Codex agent receives the image.
 
 ![Codex Scratchpad mobile concept](assets/mobile-concept.png)
 
@@ -18,6 +18,7 @@ phone / tablet ── Bonjour discovery ──> Codex Scratchpad on Mac ──MC
 ```
 
 - Infinite dotted-grid canvas with finger + S Pen/stylus pressure support and AndroidX motion prediction for lower-latency pen rendering
+- Canvas-first UI: Send lives in the compact header; secondary tools and instructions stay collapsed until needed
 - Shape tools: rectangle, arrow, and line; undoable with freehand marks
 - Camera + gallery image annotation, then push the annotated image to Codex
 - Pinch to zoom; pan with two fingers while keeping one-finger drawing natural
@@ -39,7 +40,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 2. Install the Codex plugin.
 3. Keep phone + Mac on the same Wi-Fi.
 4. Open the app. It finds the Codex Scratchpad service automatically, then pairs once.
-5. Draw, optionally add an instruction, and tap **Push to Codex**. Pinch to zoom and use two fingers to pan across the dotted canvas.
+5. Draw and tap the paper-plane **Send** icon. Open the overflow menu to add an instruction, import an image, pair by QR, or use shape tools. Pinch to zoom and use two fingers to pan.
 
 There is no IP address, port, terminal command, Firebase project, or cloud account in the user flow.
 
@@ -74,9 +75,9 @@ Scratchpad traffic stays on the local network and is intended for a trusted priv
 ## Roadmap
 
 - [x] Bonjour/mDNS automatic Mac discovery
-- [ ] QR fallback + short-lived device pairing
+- [x] QR fallback + device pairing
 - [ ] iOS / iPad client
-- [ ] Screenshot and camera annotation
+- [x] Camera and gallery annotation
 - [ ] Real-time device status in Codex
 - [ ] Optional self-hosted remote relay
 
