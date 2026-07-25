@@ -1,0 +1,25 @@
+{
+  "name": "codex-scratchpad",
+  "version": "0.1.0",
+  "description": "Pull visual input from Codex Scratchpad on your local Wi-Fi.",
+  "author": {
+    "name": "Vineeth Kalluru",
+    "email": "kssaivineeth@gmail.com",
+    "url": "https://github.com/dreamhunter02"
+  },
+  "repository": "https://github.com/dreamhunter02/codex-scratchpad",
+  "license": "MIT",
+  "keywords": ["codex", "scratchpad", "mobile", "mcp", "android"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Codex Scratchpad",
+    "shortDescription": "Receive sketches from your phone.",
+    "longDescription": "A private local Wi-Fi image inbox for mobile sketches and Codex.",
+    "developerName": "Vineeth Kalluru",
+    "category": "Productivity",
+    "capabilities": ["Interactive"],
+    "defaultPrompt": ["Read my newest scratchpad image.", "Show my scratchpad inbox."],
+    "brandColor": "#FF8A1E"
+  }
+}

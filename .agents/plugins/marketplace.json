@@ -1,0 +1,20 @@
+{
+  "name": "codex-scratchpad",
+  "interface": {
+    "displayName": "Codex Scratchpad"
+  },
+  "plugins": [
+    {
+      "name": "codex-scratchpad",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-scratchpad"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
