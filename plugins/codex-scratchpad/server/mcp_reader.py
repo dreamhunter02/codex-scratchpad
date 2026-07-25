@@ -62,8 +62,10 @@ def main() -> None:
                     if not item:
                         reply(request_id, {"content": [{"type": "text", "text": "No pending scratchpad image."}]})
                     else:
-                        image = (INBOX / item["file"]).read_bytes()
+                        image_path = (INBOX / item["file"]).resolve()
+                        image = image_path.read_bytes()
                         metadata = {key: value for key, value in item.items() if key != "file"}
+                        metadata["image_path"] = str(image_path)
                         reply(request_id, {"content": [{"type": "text", "text": json.dumps(metadata)}, {"type": "image", "data": base64.b64encode(image).decode(), "mimeType": "image/png"}]})
                 elif name == "scratchpad_list":
                     reply(request_id, {"content": [{"type": "text", "text": json.dumps(sorted(items, key=lambda value: value.get("created_at", ""), reverse=True))}]})
