@@ -108,12 +108,12 @@ private fun ScratchpadApp() {
     fun pairFromQr() {
         scanner.startScan().addOnSuccessListener { barcode ->
             val pair = Pairing.parse(barcode.rawValue)
-            if (pair == null) pushStatus = "That QR code is not a Scratchpad pairing code"
+            if (pair == null) pushStatus = "That QR code is not a dev.board pairing code"
             else {
                 endpoint = pair.endpoint
                 token = pair.token
                 pairingStore.save(pair)
-                pushStatus = "Paired with Codex Scratchpad"
+                pushStatus = "Paired with dev.board"
             }
         }.addOnFailureListener { pushStatus = "QR scan cancelled or unavailable" }
     }
@@ -145,7 +145,7 @@ private fun ScratchpadApp() {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(46.dp)) {
                     Text("</>", color = Amber, fontSize = 20.sp)
                     Spacer(Modifier.width(8.dp))
-                    Text("Scratchpad", color = Color.White, fontSize = 19.sp)
+                    Text("dev.board", color = Color.White, fontSize = 19.sp)
                     Spacer(Modifier.width(8.dp))
                     Box(Modifier.size(7.dp).background(if (endpoint == null) Muted else Color(0xFF56D47B), RoundedCornerShape(50)))
                     Spacer(Modifier.weight(1f))

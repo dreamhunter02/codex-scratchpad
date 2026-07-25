@@ -6,7 +6,7 @@
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="Codex Scratchpad"
+        android:label="dev.board"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.CodexScratchpad"
         android:usesCleartextTraffic="true">

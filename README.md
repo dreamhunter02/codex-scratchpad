@@ -1,4 +1,4 @@
-# Codex Scratchpad
+# dev.board
 
 [![Android](https://img.shields.io/badge/Android-26%2B-3DDC84?logo=android&logoColor=white)](https://developer.android.com/)
 [![Codex](https://img.shields.io/badge/Codex-MCP-FF8A1E?logo=openai&logoColor=white)](https://developers.openai.com/)
@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/License-MIT-181717.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/dreamhunter02/codex-scratchpad?style=social)](https://github.com/dreamhunter02/codex-scratchpad/stargazers)
 
-**Your phone is a visual input surface for Codex.** Draw with a finger, S Pen, Apple Pencil, or any stylus; tap the **Send** icon; your local Codex agent receives the image.
+**A visual input surface for Codex.** Draw with a finger, S Pen, Apple Pencil, or any stylus; tap the **Send** icon; your local Codex agent receives the image.
 
 ![Codex Scratchpad mobile concept](assets/mobile-concept.png)
 
