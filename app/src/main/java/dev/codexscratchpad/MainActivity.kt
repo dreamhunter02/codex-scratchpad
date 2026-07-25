@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.input.motionprediction.MotionEventPredictor
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
@@ -241,10 +242,12 @@ private class ScratchpadView(context: Context) : View(context) {
     private var scale = 1f; private var panX = 0f; private var panY = 0f
     private var transforming = false; private var lastFocusX = 0f; private var lastFocusY = 0f; private var lastSpan = 0f
     private var stylusUntil = 0L
+    private val motionPredictor = MotionEventPredictor.newInstance(this)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND; style = Paint.Style.STROKE }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val isStylus = event.getToolType(0) == MotionEvent.TOOL_TYPE_STYLUS
+        motionPredictor.record(event)
         if (isStylus) stylusUntil = event.eventTime + 750L
         if (!isStylus && event.eventTime < stylusUntil && event.pointerCount == 1) return true // basic palm rejection
         when (event.actionMasked) {
@@ -265,6 +268,12 @@ private class ScratchpadView(context: Context) : View(context) {
                         is Mark.Ink -> mark.samples += Sample(point.first, point.second, brushWidth(event, isStylus))
                         is Mark.Shape -> { mark.endX = point.first; mark.endY = point.second }
                         null -> Unit
+                    }
+                    if (isStylus && active is Mark.Ink) {
+                        motionPredictor.predict()?.let { predicted -> try {
+                            val next = toWorld(predicted.x, predicted.y)
+                            (active as Mark.Ink).samples += Sample(next.first, next.second, brushWidth(predicted, true))
+                        } finally { predicted.recycle() } }
                     }
                 }
             }

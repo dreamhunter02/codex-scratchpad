@@ -17,7 +17,7 @@ phone / tablet ── Bonjour discovery ──> Codex Scratchpad on Mac ──MC
      draw + caption                        private PNG inbox          agent context
 ```
 
-- Infinite dotted-grid canvas with finger + S Pen/stylus pressure support
+- Infinite dotted-grid canvas with finger + S Pen/stylus pressure support and AndroidX motion prediction for lower-latency pen rendering
 - Shape tools: rectangle, arrow, and line; undoable with freehand marks
 - Camera + gallery image annotation, then push the annotated image to Codex
 - Pinch to zoom; pan with two fingers while keeping one-finger drawing natural
