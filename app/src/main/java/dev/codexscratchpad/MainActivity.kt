@@ -13,6 +13,7 @@ import android.net.nsd.NsdServiceInfo
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
+import androidx.annotation.DrawableRes
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -33,6 +34,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -184,7 +186,7 @@ private fun ScratchpadApp() {
                             onPair = { showTools = false; pairFromQr() },
                             onClear = { showTools = false; canvas?.clear() },
                             onInstruction = { showTools = false; showInstruction = true },
-                            modifier = Modifier.align(Alignment.BottomStart).padding(start = 66.dp, bottom = 10.dp)
+                            modifier = Modifier.align(Alignment.BottomStart).padding(start = 78.dp, bottom = 10.dp)
                         )
                     }
 
@@ -242,25 +244,35 @@ private fun FloatingToolRail(
         color = Color(0xCC242424),
         shape = RoundedCornerShape(24.dp),
         shadowElevation = 8.dp,
-        modifier = modifier.width(46.dp)
+        modifier = modifier.width(58.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(vertical = 4.dp)) {
-            CompactIconButton(tool == Tool.PEN, { onTool(Tool.PEN) }) { AppIcon(AppIconType.PEN, if (tool == Tool.PEN) Amber else Color.White) }
-            CompactIconButton(tool == Tool.ERASER, { onTool(Tool.ERASER) }) { AppIcon(AppIconType.ERASER, if (tool == Tool.ERASER) Amber else Color.White) }
-            CompactIconButton(false, onUndo) { AppIcon(AppIconType.UNDO, Color.White) }
-            CompactIconButton(false, onMore) { AppIcon(AppIconType.MORE, Color.White) }
+            CompactToolButton(tool == Tool.PEN, "Pen", R.drawable.ic_edit) { onTool(Tool.PEN) }
+            CompactToolButton(tool == Tool.ERASER, "Erase", R.drawable.ic_erase) { onTool(Tool.ERASER) }
+            CompactToolButton(false, "Undo", R.drawable.ic_undo, onUndo)
+            CompactToolButton(false, "More", R.drawable.ic_expand_more, onMore)
         }
     }
 }
 
 @Composable
-private fun CompactIconButton(selected: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.size(42.dp)
+private fun CompactToolButton(
+    selected: Boolean,
+    label: String,
+    @DrawableRes icon: Int,
+    onClick: () -> Unit
+) {
+    val color = if (selected) Amber else Color.White
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.width(50.dp).height(48.dp)
             .background(if (selected) Color(0x22FF8A1E) else Color.Transparent, RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
-    ) { content() }
+    ) {
+        Icon(painterResource(icon), contentDescription = label, tint = color, modifier = Modifier.size(23.dp))
+        Text(label, color = color, fontSize = 9.sp, lineHeight = 10.sp)
+    }
 }
 
 @Composable
@@ -305,7 +317,7 @@ private fun ToolMenuRow(label: String, onClick: () -> Unit, color: Color = Color
     )
 }
 
-private enum class AppIconType { SEND, MENU, PEN, ERASER, UNDO, MORE }
+private enum class AppIconType { SEND, MENU }
 
 @Composable
 private fun AppIcon(type: AppIconType, color: Color) {
@@ -324,29 +336,6 @@ private fun AppIcon(type: AppIconType, color: Color) {
                 drawLine(color, Offset(size.width * .45f, size.height * .58f), Offset(size.width * .88f, size.height * .12f), stroke.width, StrokeCap.Round)
             }
             AppIconType.MENU -> listOf(.28f, .5f, .72f).forEach { y -> drawCircle(color, radius = 1.8.dp.toPx(), center = Offset(size.width / 2, size.height * y)) }
-            AppIconType.PEN -> {
-                drawLine(color, Offset(size.width * .2f, size.height * .8f), Offset(size.width * .76f, size.height * .24f), stroke.width, StrokeCap.Round)
-                drawLine(color, Offset(size.width * .15f, size.height * .85f), Offset(size.width * .3f, size.height * .81f), stroke.width, StrokeCap.Round)
-            }
-            AppIconType.ERASER -> {
-                val path = Path().apply {
-                    moveTo(size.width * .2f, size.height * .62f)
-                    lineTo(size.width * .56f, size.height * .22f)
-                    lineTo(size.width * .82f, size.height * .48f)
-                    lineTo(size.width * .46f, size.height * .82f)
-                    close()
-                }
-                drawPath(path, color, style = stroke)
-            }
-            AppIconType.UNDO -> {
-                drawArc(color, 120f, 240f, false, topLeft = Offset(size.width * .2f, size.height * .22f), size = androidx.compose.ui.geometry.Size(size.width * .62f, size.height * .62f), style = stroke)
-                drawLine(color, Offset(size.width * .2f, size.height * .44f), Offset(size.width * .2f, size.height * .18f), stroke.width, StrokeCap.Round)
-                drawLine(color, Offset(size.width * .2f, size.height * .18f), Offset(size.width * .43f, size.height * .28f), stroke.width, StrokeCap.Round)
-            }
-            AppIconType.MORE -> {
-                drawLine(color, Offset(size.width * .28f, size.height * .42f), Offset(size.width * .5f, size.height * .64f), stroke.width, StrokeCap.Round)
-                drawLine(color, Offset(size.width * .5f, size.height * .64f), Offset(size.width * .72f, size.height * .42f), stroke.width, StrokeCap.Round)
-            }
         }
     }
 }
