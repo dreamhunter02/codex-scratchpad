@@ -2,6 +2,7 @@
 
 [![Android](https://img.shields.io/badge/Android-26%2B-3DDC84?logo=android&logoColor=white)](https://developer.android.com/)
 [![Codex](https://img.shields.io/badge/Codex-MCP-FF8A1E?logo=openai&logoColor=white)](https://developers.openai.com/)
+[![Download latest APK](https://img.shields.io/badge/Download-latest%20APK-FF8A1E?logo=android&logoColor=white)](https://github.com/dreamhunter02/codex-scratchpad/releases/latest/download/codex-scratchpad-latest.apk)
 [![License](https://img.shields.io/badge/License-MIT-181717.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/dreamhunter02/codex-scratchpad?style=social)](https://github.com/dreamhunter02/codex-scratchpad/stargazers)
 
