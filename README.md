@@ -17,7 +17,9 @@ phone / tablet ── Bonjour discovery ──> Codex Scratchpad on Mac ──MC
      draw + caption                        private PNG inbox          agent context
 ```
 
-- Infinite dotted-grid canvas with finger + stylus pressure support
+- Infinite dotted-grid canvas with finger + S Pen/stylus pressure support
+- Shape tools: rectangle, arrow, and line; undoable with freehand marks
+- Camera + gallery image annotation, then push the annotated image to Codex
 - Pinch to zoom; pan with two fingers while keeping one-finger drawing natural
 - Mobile and tablet responsive layout
 - Zero-config local discovery: no Mac IP address or port to type
@@ -50,6 +52,20 @@ Codex receives the sketch through these private local MCP tools:
 | `scratchpad_acknowledge` | Mark an image processed |
 
 Ask Codex: **“Read my newest scratchpad image.”**
+
+### QR pairing fallback
+
+Bonjour discovery remains the normal zero-setup path. If a restrictive Wi-Fi blocks discovery, start the bridge with a token and generate a local QR code on the Mac:
+
+```bash
+python3 bridge/mcp_server.py --token "choose-a-long-random-secret"
+swift bridge/pairing_qr.swift \
+  --endpoint "http://YOUR-MAC-LAN-IP:8787" \
+  --token "choose-a-long-random-secret" \
+  --output pairing.png
+```
+
+Open `pairing.png` on the Mac, then tap **Pair QR** in the app. The scanner uses Google Play services and does not require an app camera permission. The endpoint and pairing secret are saved only on the phone.
 
 ## Security model
 
